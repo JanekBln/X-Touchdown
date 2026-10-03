@@ -1,5 +1,5 @@
 --[[
-X-Plane 12 Touchdown Camera Effect v1.7
+X-Plane 12 Touchdown Camera Effect v1.8
 FlyWithLua NG
 
 Features:
@@ -134,7 +134,7 @@ local capture_active_profile = nil
 local baseline_tuning = nil
 local profile_limits = {
     ENABLED = {0, 1, true}, MASTER = {0, 2}, VERTICAL = {0, 0.150},
-    PITCH = {0, 3.00}, DURATION = {0.15, 1.50},
+    PITCH = {0, 5.00}, DURATION = {0.15, 1.50},
     SOUND_ENABLED = {0, 1, true}, SOUND_CHOICE = {1, 3, true}, SOUND_VOLUME = {0, 1},
     CAMERA_MODE = {1, 3, true}, XCAMERA_SCRIPT_ID = {1, 9999, true}
 }
@@ -771,7 +771,7 @@ local function build_settings_content(wnd, x, y)
         "Pitch movement",
         max_pitch_move,
         0.00,
-        3.00,
+        5.00,
         "%.2f deg"
     )
     if changed then max_pitch_move = value end
@@ -872,7 +872,7 @@ function td_camera_build_window(wnd, x, y)
         end
     end
     if window_error ~= nil then
-        imgui.TextUnformatted("Touchdown Camera Effect v1.7 - Settings error")
+        imgui.TextUnformatted("Touchdown Camera Effect v1.8 - Settings error")
         imgui.TextUnformatted(window_error)
         if imgui.Button("Retry settings", 160, 28) then window_error = nil end
     end
@@ -888,7 +888,7 @@ function td_camera_open_window()
     end
 
     settings_wnd = float_wnd_create(680, 830, 1, true)
-    float_wnd_set_title(settings_wnd, "Touchdown Camera Effect v1.7")
+    float_wnd_set_title(settings_wnd, "Touchdown Camera Effect v1.8")
     float_wnd_set_imgui_builder(settings_wnd, "td_camera_build_window")
     float_wnd_set_onclose(settings_wnd, "td_camera_window_closed")
 end
