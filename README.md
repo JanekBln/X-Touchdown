@@ -6,7 +6,7 @@
 
 A configurable touchdown camera effect for **X-Plane 12 and FlyWithLua**, with separate main-gear and nose-gear impulses, optional impact sounds, and X-Camera integration.
 
-**Current version: 1.7**
+**Current version: 1.8**
 
 ## Features
 
@@ -56,7 +56,7 @@ You can also assign these commands in X-Plane's keyboard or joystick settings:
 
 ## Tune and save an aircraft
 
-Use the normal 3D cockpit view and start with a **−200 fpm** test. Adjust **Master strength**, **Aircraft strength**, **Vertical movement**, **Pitch movement**, and **Duration** to taste. Pitch can be set from 0 to 3 degrees and duration from 0.15 to 1.5 seconds. The actual pitch impulse also scales with landing intensity and damping.
+Use the normal 3D cockpit view and start with a **−200 fpm** test. Adjust **Master strength**, **Aircraft strength**, **Vertical movement**, **Pitch movement**, and **Duration** to taste. Pitch can be set from 0 to 5 degrees and duration from 0.15 to 1.5 seconds. The actual pitch impulse also scales with landing intensity and damping.
 
 Click **Save aircraft settings** to write `Touchdown_Camera_Effect_XP12.cfg` beside the script. The window confirms the saved aircraft or displays a write error. Settings restore when that aircraft type is loaded again. For example, B763 and B752 can have different durations and intensities.
 
