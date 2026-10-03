@@ -6,7 +6,7 @@
 
 A configurable touchdown camera effect for **X-Plane 12 and FlyWithLua**, with separate main-gear and nose-gear impulses, optional impact sounds, and X-Camera integration.
 
-**Current version: 1.5**
+**Current version: 1.6**
 
 ## Features
 
@@ -58,7 +58,7 @@ You can also assign these commands in X-Plane's keyboard or joystick settings:
 
 Use the normal 3D cockpit view and start with a **−200 fpm** test. Adjust **Master strength**, **Aircraft strength**, **Vertical movement**, **Pitch movement**, and **Duration** to taste.
 
-Click **Save aircraft settings** to write `Touchdown_Camera_Effect_XP12.cfg` beside the script. Settings restore when that aircraft type is loaded again. For example, B763 and B752 can have different durations and intensities.
+Click **Save aircraft settings** to write `Touchdown_Camera_Effect_XP12.cfg` beside the script. The window confirms the saved aircraft or displays a write error. Settings restore when that aircraft type is loaded again. For example, B763 and B752 can have different durations and intensities.
 
 Profiles are keyed by **ICAO aircraft type**, not by livery or aircraft folder. Changes are kept in memory while the script runs; saving is required to retain them after a reload or restart. **Reset current aircraft** resets the current profile; save afterwards to retain the reset.
 
