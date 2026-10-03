@@ -6,7 +6,7 @@
 
 A configurable touchdown camera effect for **X-Plane 12 and FlyWithLua**, with separate main-gear and nose-gear impulses, optional impact sounds, and X-Camera integration.
 
-**Current version: 1.10**
+**Current version: 1.11**
 
 ## Features
 
@@ -99,7 +99,7 @@ Reference: [X-Camera 2.4.4 User Guide](https://www.stickandrudderstudios.com/dow
 
 Choose **Light**, **Medium**, or **Heavy** manually. The selected sound plays on real touchdowns and on test impulses; it is not selected automatically by sink rate. The nose sound is reduced by the nose-gear strength multiplier.
 
-All three included WAV files were synthesized for this project, without third-party recordings or samples. Missing sound files leave the camera effect available and show a status message.
+The WAV files have increased base volume, with peaks normalized to 95 percent to avoid clipping. All three included WAV files were synthesized for this project, without third-party recordings or samples. Missing sound files leave the camera effect available and show a status message.
 
 ## Compatibility and testing
 
