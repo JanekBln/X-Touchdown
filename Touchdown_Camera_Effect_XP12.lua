@@ -1,5 +1,5 @@
 --[[
-X-Plane 12 Touchdown Camera Effect v1.9
+X-Plane 12 Touchdown Camera Effect v1.10
 FlyWithLua NG
 
 Features:
@@ -678,23 +678,85 @@ do_every_frame("td_camera_main_loop()")
 -- SETTINGS WINDOW
 -- ============================================================
 
+-- Short help for each settings item, including its visible label.
+local help_text = {
+    ["XP12 Touchdown Camera Effect"] = "Camera movement and sound on landing.",
+    ["Settings stored per ICAO aircraft type"] = "Each aircraft type has its own saved settings.",
+    ["Auto"] = "Select X-Camera or the X-Plane camera automatically.",
+    ["X-Plane"] = "Use the X-Plane camera with X-Camera disabled.",
+    ["X-Camera"] = "Use X-Camera Lua effect offsets.",
+    ["X-Camera Script ID (type here)"] = "Match the ID in X-Camera. Reuse it for all X-Touchdown cameras.",
+    ["Refresh X-Camera"] = "Detect X-Camera again after loading it.",
+    ["Effect enabled"] = "Turn touchdown movement and sound on or off.",
+    ["Master strength"] = "Scale the overall camera movement.",
+    ["Vertical movement"] = "Up and down camera movement in meters.",
+    ["Pitch movement"] = "Camera tilt in degrees, scaled by impact and damping. Zero disables tilt.",
+    ["Duration"] = "Time for the camera impulse to settle, in seconds.",
+    ["Nose gear strength"] = "Scale the nose-wheel impulse. Zero disables it.",
+    ["Nose gear index (0-9)"] = "Select the aircraft's nose-wheel contact index.",
+    ["Gear contacts unavailable: main effect only"] = "Separate nose-wheel contact is unavailable.",
+    ["Touchdown sound"] = "Enable the selected landing sound.",
+    ["Light"] = "Select the light impact sound.",
+    ["Medium"] = "Select the medium impact sound.",
+    ["Heavy"] = "Select the heavy impact sound.",
+    ["Sound volume"] = "Set landing sound volume. Zero mutes it.",
+    ["TEST TOUCHDOWN (camera + selected sound)"] = "Preview a landing without touching down.",
+    ["TEST NOSE GEAR"] = "Preview only the softer nose-wheel impulse.",
+    ["TEST MAIN + NOSE"] = "Preview main wheels, then nose wheels after 1.5 seconds.",
+    ["Save aircraft settings"] = "Save this aircraft's settings for the next load.",
+    ["Reset current aircraft"] = "Restore this aircraft's defaults. Save to keep them.",
+    ["Retry settings"] = "Try drawing the settings again after an error."
+}
+local function item_help(label)
+    if type(imgui.IsItemHovered) ~= "function" or type(imgui.SetTooltip) ~= "function" then return end
+    local key = label:gsub("##.*$", ""):gsub("^%[", ""):gsub("%]$", "")
+    local text = help_text[key]
+    if not text then
+        if key:match("^Aircraft:") then text = "ICAO type used for this aircraft's settings."
+        elseif key:match("^Aircraft strength") then text = "Adjust movement strength for this aircraft type."
+        elseif key:match("^Camera:") then text = "Current camera output or reason it is waiting."
+        elseif key:match("^Last event:") then text = "Most recent landing or test event."
+        elseif key:match("^Last touchdown/test:") then text = "Sink rate in feet per minute and calculated impact strength."
+        elseif key:match("^Nose contact:") then text = "Contact state of the selected nose wheel."
+        elseif key:match("^Sound:") then text = "The currently selected impact sound."
+        elseif key:match("^%-[0-9]+ fpm$") then text = "Preview landing at this sink rate in feet per minute."
+        elseif key:match("^Config:") then text = "Settings file stored beside the Lua script."
+        elseif key:match("^Saved settings") then text = "These settings were written successfully."
+        elseif key:match("^Save failed:") then text = "Saving failed. Check the file location and write access."
+        elseif key:find("Settings error", 1, true) then text = "The settings window encountered an error."
+        elseif key:find("ready", 1, true) or key:find("unavailable", 1, true) then text = "Availability of the included landing sounds."
+        else text = "Details of the current settings error."
+        end
+    end
+    if imgui.IsItemHovered(0) then imgui.SetTooltip(text) end
+end
+local help_ui = {}
+for _, name in ipairs({"TextUnformatted", "Button", "Checkbox", "SliderFloat", "SliderInt", "InputInt"}) do
+    local method = name
+    help_ui[method] = function(label, ...)
+        local a, b = imgui[method](label, ...)
+        item_help(label)
+        return a, b
+    end
+end
+
 local function test_button(label, fpm, width)
-    if imgui.Button(label, width or 86, 30) then
+    if help_ui.Button(label, width or 86, 30) then
         td_camera_trigger(fpm)
     end
 end
 
 local function build_settings_content(wnd, x, y)
     sync_aircraft_profile()
-    imgui.TextUnformatted("XP12 Touchdown Camera Effect")
+    help_ui.TextUnformatted("XP12 Touchdown Camera Effect")
     imgui.Separator()
 
     choose_camera_backend()
-    imgui.TextUnformatted("Aircraft: " .. current_icao())
-    imgui.TextUnformatted("Camera: " .. camera_route_status)
-    imgui.TextUnformatted("Settings stored per ICAO aircraft type")
-    imgui.TextUnformatted("Last event: " .. last_event)
-    imgui.TextUnformatted(string.format(
+    help_ui.TextUnformatted("Aircraft: " .. current_icao())
+    help_ui.TextUnformatted("Camera: " .. camera_route_status)
+    help_ui.TextUnformatted("Settings stored per ICAO aircraft type")
+    help_ui.TextUnformatted("Last event: " .. last_event)
+    help_ui.TextUnformatted(string.format(
         "Last touchdown/test: %.0f fpm   Final strength: %.2f",
         last_touchdown_vs,
         last_effect_strength
@@ -706,27 +768,27 @@ local function build_settings_content(wnd, x, y)
 
     for i, label in ipairs({"Auto", "X-Plane", "X-Camera"}) do
         if i > 1 then imgui.SameLine() end
-        if imgui.Button((camera_mode == i and "[" .. label .. "]" or label) .. "##td_backend_" .. i, 100, 26) then
+        if help_ui.Button((camera_mode == i and "[" .. label .. "]" or label) .. "##td_backend_" .. i, 100, 26) then
             remove_previous_camera_offset()
             effect_active = false
             test_nose_delay = nil
             camera_mode = i
         end
     end
-    changed, value = imgui.InputInt("X-Camera Script ID (type here)", xcamera_script_id, 1, 100, 0)
+    changed, value = help_ui.InputInt("X-Camera Script ID (type here)", xcamera_script_id, 1, 100, 0)
     if changed then
         remove_previous_camera_offset()
         effect_active = false
         test_nose_delay = nil
         xcamera_script_id = math.max(1, math.min(9999, math.floor(value)))
     end
-    if imgui.Button("Refresh X-Camera", 160, 26) then
+    if help_ui.Button("Refresh X-Camera", 160, 26) then
         remove_previous_camera_offset()
         effect_active = false
         td_camera_scan_xcamera()
     end
     imgui.Separator()
-    changed, value = imgui.Checkbox("Effect enabled", enabled)
+    changed, value = help_ui.Checkbox("Effect enabled", enabled)
     if changed then
         enabled = value
         if not enabled then
@@ -737,7 +799,7 @@ local function build_settings_content(wnd, x, y)
         end
     end
 
-    changed, value = imgui.SliderFloat(
+    changed, value = help_ui.SliderFloat(
         "Master strength",
         master_strength,
         0.00,
@@ -747,7 +809,7 @@ local function build_settings_content(wnd, x, y)
     if changed then master_strength = value end
 
     local ac_strength = get_aircraft_strength()
-    changed, value = imgui.SliderFloat(
+    changed, value = help_ui.SliderFloat(
         "Aircraft strength (" .. current_icao() .. ")",
         ac_strength,
         0.00,
@@ -758,7 +820,7 @@ local function build_settings_content(wnd, x, y)
         set_aircraft_strength(value)
     end
 
-    changed, value = imgui.SliderFloat(
+    changed, value = help_ui.SliderFloat(
         "Vertical movement",
         max_vertical_move,
         0.000,
@@ -767,7 +829,7 @@ local function build_settings_content(wnd, x, y)
     )
     if changed then max_vertical_move = value end
 
-    changed, value = imgui.SliderFloat(
+    changed, value = help_ui.SliderFloat(
         "Pitch movement",
         max_pitch_move,
         0.00,
@@ -776,7 +838,7 @@ local function build_settings_content(wnd, x, y)
     )
     if changed then max_pitch_move = value end
 
-    changed, value = imgui.SliderFloat(
+    changed, value = help_ui.SliderFloat(
         "Duration",
         effect_duration,
         0.15,
@@ -786,36 +848,36 @@ local function build_settings_content(wnd, x, y)
     if changed then effect_duration = value end
 
     imgui.Separator()
-    changed, value = imgui.SliderFloat("Nose gear strength", nose_strength(), 0.00, 1.00, "%.2f")
+    changed, value = help_ui.SliderFloat("Nose gear strength", nose_strength(), 0.00, 1.00, "%.2f")
     if changed then nose_strength_profiles[current_icao()] = value end
-    changed, value = imgui.SliderInt("Nose gear index (0-9)", nose_index(), 0, 9, "%d")
+    changed, value = help_ui.SliderInt("Nose gear index (0-9)", nose_index(), 0, 9, "%d")
     if changed then
         nose_index_profiles[current_icao()] = value
         previous_nose_ground = nil
         nose_pending = false
     end
     if gear_contacts then
-        imgui.TextUnformatted("Nose contact: " .. ((tonumber(gear_contacts[nose_index()]) or 0) > 0 and "GROUND" or "AIR"))
+        help_ui.TextUnformatted("Nose contact: " .. ((tonumber(gear_contacts[nose_index()]) or 0) > 0 and "GROUND" or "AIR"))
     else
-        imgui.TextUnformatted("Gear contacts unavailable: main effect only")
+        help_ui.TextUnformatted("Gear contacts unavailable: main effect only")
     end
-    changed, value = imgui.Checkbox("Touchdown sound", sound_enabled)
+    changed, value = help_ui.Checkbox("Touchdown sound", sound_enabled)
     if changed then
         sound_enabled = value
         if not sound_enabled then stop_touchdown_sounds() end
     end
-    imgui.TextUnformatted("Sound: " .. sound_names[sound_choice])
+    help_ui.TextUnformatted("Sound: " .. sound_names[sound_choice])
     for i, name in ipairs(sound_names) do
         if i > 1 then imgui.SameLine() end
-        if imgui.Button((sound_choice == i and "[" .. name .. "]" or name) .. "##td_sound_" .. i, 100, 26) then
+        if help_ui.Button((sound_choice == i and "[" .. name .. "]" or name) .. "##td_sound_" .. i, 100, 26) then
             sound_choice = i
         end
     end
-    changed, value = imgui.SliderFloat("Sound volume", sound_volume, 0.00, 1.00, "%.2f")
+    changed, value = help_ui.SliderFloat("Sound volume", sound_volume, 0.00, 1.00, "%.2f")
     if changed then sound_volume = value end
-    imgui.TextUnformatted(sound_status)
+    help_ui.TextUnformatted(sound_status)
     imgui.Separator()
-    imgui.TextUnformatted("TEST TOUCHDOWN (camera + selected sound)")
+    help_ui.TextUnformatted("TEST TOUCHDOWN (camera + selected sound)")
 
     test_button("-100 fpm", -100, 88)
     imgui.SameLine()
@@ -827,12 +889,12 @@ local function build_settings_content(wnd, x, y)
     imgui.SameLine()
     test_button("-600 fpm", -600, 88)
 
-    if imgui.Button("TEST NOSE GEAR", 160, 28) then td_camera_test_nose() end
+    if help_ui.Button("TEST NOSE GEAR", 160, 28) then td_camera_test_nose() end
     imgui.SameLine()
-    if imgui.Button("TEST MAIN + NOSE", 180, 28) then td_camera_test_landing() end
+    if help_ui.Button("TEST MAIN + NOSE", 180, 28) then td_camera_test_landing() end
     imgui.Separator()
 
-    if imgui.Button("Save aircraft settings", 190, 28) then
+    if help_ui.Button("Save aircraft settings", 190, 28) then
         if save_aircraft_config() then
             logMsg("[Touchdown Camera] Aircraft settings saved.")
         end
@@ -840,7 +902,7 @@ local function build_settings_content(wnd, x, y)
 
     imgui.SameLine()
 
-    if imgui.Button("Reset current aircraft", 170, 28) then
+    if help_ui.Button("Reset current aircraft", 170, 28) then
         remove_previous_camera_offset()
         effect_active = false
         test_nose_delay = nil
@@ -853,8 +915,8 @@ local function build_settings_content(wnd, x, y)
         apply_aircraft_tuning(code)
     end
 
-    if save_status ~= "" then imgui.TextUnformatted(save_status) end
-    imgui.TextUnformatted(
+    if save_status ~= "" then help_ui.TextUnformatted(save_status) end
+    help_ui.TextUnformatted(
         "Config: Touchdown_Camera_Effect_XP12.cfg"
     )
 end
@@ -872,9 +934,9 @@ function td_camera_build_window(wnd, x, y)
         end
     end
     if window_error ~= nil then
-        imgui.TextUnformatted("Touchdown Camera Effect v1.9 - Settings error")
-        imgui.TextUnformatted(window_error)
-        if imgui.Button("Retry settings", 160, 28) then window_error = nil end
+        help_ui.TextUnformatted("Touchdown Camera Effect v1.10 - Settings error")
+        help_ui.TextUnformatted(window_error)
+        if help_ui.Button("Retry settings", 160, 28) then window_error = nil end
     end
 end
 
@@ -888,7 +950,7 @@ function td_camera_open_window()
     end
 
     settings_wnd = float_wnd_create(680, 830, 1, true)
-    float_wnd_set_title(settings_wnd, "Touchdown Camera Effect v1.9")
+    float_wnd_set_title(settings_wnd, "Touchdown Camera Effect v1.10")
     float_wnd_set_imgui_builder(settings_wnd, "td_camera_build_window")
     float_wnd_set_onclose(settings_wnd, "td_camera_window_closed")
 end
