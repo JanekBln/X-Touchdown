@@ -6,7 +6,7 @@
 
 A configurable touchdown camera effect for **X-Plane 12 and FlyWithLua**, with separate main-gear and nose-gear impulses, optional impact sounds, and X-Camera integration.
 
-**Current version: 1.9**
+**Current version: 1.10**
 
 ## Features
 
@@ -43,7 +43,7 @@ Keep only one copy of the Lua script in the active Scripts folder. The `assets` 
 
 ## Open the settings
 
-The window starts closed. Open it through:
+Hover over a label or control for a short English explanation. The window starts closed. Open it through:
 
 **Plugins → FlyWithLua → FlyWithLua Macros → Touchdown Camera Effect – Open settings**
 
