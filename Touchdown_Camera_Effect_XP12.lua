@@ -1,5 +1,5 @@
 --[[
-X-Plane 12 Touchdown Camera Effect v1.5
+X-Plane 12 Touchdown Camera Effect v1.6
 FlyWithLua NG
 
 Features:
@@ -139,6 +139,7 @@ local profile_limits = {
     CAMERA_MODE = {1, 3, true}, XCAMERA_SCRIPT_ID = {1, 9999, true}
 }
 
+local save_status = ""
 local config_file = SCRIPT_DIRECTORY .. "Touchdown_Camera_Effect_XP12.cfg"
 
 local function trim(s)
@@ -195,16 +196,24 @@ local function save_aircraft_config()
     local f = io.open(config_file, "w")
     if not f then
         logMsg("[Touchdown Camera] Could not write config file: " .. config_file)
+        save_status = "Save failed: cannot open config for writing."
         return false
     end
 
-    f:write("# X-Plane 12 Touchdown Camera Effect - ICAO aircraft settings\n")
-    f:write("# 1.00 = normal, 0.50 = half, 1.50 = 50% stronger\n\n")
+    local write_error = nil
+    local function write(text)
+        if write_error then return end
+        local ok, err = f:write(text)
+        if not ok then write_error = tostring(err or "write error") end
+    end
 
-    f:write(string.format("SOUND_CHOICE=%d\nSOUND_VOLUME=%.2f\nSOUND_ENABLED=%d\n\n",
+    write("# X-Plane 12 Touchdown Camera Effect - ICAO aircraft settings\n")
+    write("# 1.00 = normal, 0.50 = half, 1.50 = 50% stronger\n\n")
+
+    write(string.format("SOUND_CHOICE=%d\nSOUND_VOLUME=%.2f\nSOUND_ENABLED=%d\n\n",
         baseline_tuning.SOUND_CHOICE, baseline_tuning.SOUND_VOLUME, baseline_tuning.SOUND_ENABLED))
 
-    f:write(string.format("CAMERA_MODE=%d\nXCAMERA_SCRIPT_ID=%d\n\n", baseline_tuning.CAMERA_MODE, baseline_tuning.XCAMERA_SCRIPT_ID))
+    write(string.format("CAMERA_MODE=%d\nXCAMERA_SCRIPT_ID=%d\n\n", baseline_tuning.CAMERA_MODE, baseline_tuning.XCAMERA_SCRIPT_ID))
     local keys = {}
     for icao, _ in pairs(aircraft_strength) do
         table.insert(keys, icao)
@@ -212,11 +221,11 @@ local function save_aircraft_config()
     table.sort(keys)
 
     for _, icao in ipairs(keys) do
-        f:write(string.format("%s=%.2f\n", icao, aircraft_strength[icao]))
+        write(string.format("%s=%.2f\n", icao, aircraft_strength[icao]))
     end
 
     for _, icao in ipairs(keys) do
-        f:write(string.format("NOSE_STRENGTH_%s=%.2f\nNOSE_INDEX_%s=%d\n", icao,
+        write(string.format("NOSE_STRENGTH_%s=%.2f\nNOSE_INDEX_%s=%d\n", icao,
             nose_strength_profiles[icao] or default_nose_strength, icao, nose_index_profiles[icao] or 0))
     end
     local profile_codes = {}
@@ -229,11 +238,17 @@ local function save_aircraft_config()
         for _, field in ipairs(fields) do
             local value = tuning_profiles[code][field]
             if value ~= nil then
-                f:write(string.format("PROFILE_%s_%s=%.6f\n", code, field, value))
+                write(string.format("PROFILE_%s_%s=%.6f\n", code, field, value))
             end
         end
     end
-    f:close()
+    local closed, close_error = f:close()
+    if write_error or not closed then
+        save_status = "Save failed: " .. tostring(write_error or close_error or "close error")
+        logMsg("[Touchdown Camera] " .. save_status)
+        return false
+    end
+    save_status = "Saved settings for " .. tostring(active_aircraft_code) .. "."
     return true
 end
 
@@ -838,6 +853,7 @@ local function build_settings_content(wnd, x, y)
         apply_aircraft_tuning(code)
     end
 
+    if save_status ~= "" then imgui.TextUnformatted(save_status) end
     imgui.TextUnformatted(
         "Config: Touchdown_Camera_Effect_XP12.cfg"
     )
@@ -856,7 +872,7 @@ function td_camera_build_window(wnd, x, y)
         end
     end
     if window_error ~= nil then
-        imgui.TextUnformatted("Touchdown Camera Effect v1.5 - Settings error")
+        imgui.TextUnformatted("Touchdown Camera Effect v1.6 - Settings error")
         imgui.TextUnformatted(window_error)
         if imgui.Button("Retry settings", 160, 28) then window_error = nil end
     end
@@ -872,7 +888,7 @@ function td_camera_open_window()
     end
 
     settings_wnd = float_wnd_create(680, 830, 1, true)
-    float_wnd_set_title(settings_wnd, "Touchdown Camera Effect v1.5")
+    float_wnd_set_title(settings_wnd, "Touchdown Camera Effect v1.6")
     float_wnd_set_imgui_builder(settings_wnd, "td_camera_build_window")
     float_wnd_set_onclose(settings_wnd, "td_camera_window_closed")
 end
