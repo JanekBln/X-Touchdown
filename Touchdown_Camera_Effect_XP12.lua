@@ -1,5 +1,5 @@
 --[[
-X-Plane 12 Touchdown Camera Effect v1.10
+X-Plane 12 Touchdown Camera Effect v1.11
 FlyWithLua NG
 
 Features:
@@ -934,7 +934,7 @@ function td_camera_build_window(wnd, x, y)
         end
     end
     if window_error ~= nil then
-        help_ui.TextUnformatted("Touchdown Camera Effect v1.10 - Settings error")
+        help_ui.TextUnformatted("Touchdown Camera Effect v1.11 - Settings error")
         help_ui.TextUnformatted(window_error)
         if help_ui.Button("Retry settings", 160, 28) then window_error = nil end
     end
@@ -950,7 +950,7 @@ function td_camera_open_window()
     end
 
     settings_wnd = float_wnd_create(680, 830, 1, true)
-    float_wnd_set_title(settings_wnd, "Touchdown Camera Effect v1.10")
+    float_wnd_set_title(settings_wnd, "Touchdown Camera Effect v1.11")
     float_wnd_set_imgui_builder(settings_wnd, "td_camera_build_window")
     float_wnd_set_onclose(settings_wnd, "td_camera_window_closed")
 end
