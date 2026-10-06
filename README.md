@@ -6,7 +6,7 @@
 
 A configurable touchdown camera effect for **X-Plane 12 and FlyWithLua**, with separate main-gear and nose-gear impulses, optional impact sounds, and X-Camera integration.
 
-**Current version: 1.11**
+**Current version: 1.12**
 
 ## Features
 
@@ -14,7 +14,7 @@ A configurable touchdown camera effect for **X-Plane 12 and FlyWithLua**, with s
 - Main-gear touchdown detection using the last airborne vertical speed.
 - A separate, softer impulse when the nose gear touches down later.
 - Adjustable intensity for each aircraft ICAO type.
-- Per-aircraft settings for master strength, aircraft strength, vertical movement, pitch, duration, nose-gear strength and index, sound, camera mode, and X-Camera Script ID.
+- Per-aircraft settings for master strength, aircraft strength, vertical movement, pitch, duration, nose-gear strength and index, sensitivity, impulse normalization, sound, camera mode, and X-Camera Script ID.
 - Three original synthetic impact sounds: **Light**, **Medium**, and **Heavy**, with volume and mute controls.
 - Test buttons for **−100, −200, −300, −400, and −600 fpm**.
 - **TEST NOSE GEAR** and **TEST MAIN + NOSE** previews.
@@ -56,13 +56,23 @@ You can also assign these commands in X-Plane's keyboard or joystick settings:
 
 ## Tune and save an aircraft
 
-Use the normal 3D cockpit view and start with a **−200 fpm** test. Adjust **Master strength**, **Aircraft strength**, **Vertical movement**, **Pitch movement**, and **Duration** to taste. Pitch can be set from 0 to 5 degrees and duration from 0.15 to 2 seconds. The actual pitch impulse also scales with landing intensity and damping.
+Use the normal 3D cockpit view and start with a **−200 fpm** test. Adjust **Master strength**, **Aircraft strength**, **Vertical movement**, **Pitch movement**, and **Duration** to taste. Pitch can be set from 0 to 5 degrees and duration from 0.15 to 2 seconds. The actual pitch impulse also scales with landing intensity and both strength multipliers.
 
 Click **Save aircraft settings** to write `Touchdown_Camera_Effect_XP12.cfg` beside the script. The window confirms the saved aircraft or displays a write error. Settings restore when that aircraft type is loaded again. For example, B763 and B752 can have different durations and intensities.
 
 Profiles are keyed by **ICAO aircraft type**, not by livery or aircraft folder. Changes are kept in memory while the script runs; saving is required to retain them after a reload or restart. **Reset current aircraft** resets the current profile; save afterwards to retain the reset.
 
 Existing configs from earlier versions remain supported.
+
+## Landing sensitivity (v1.12)
+
+**Full effect at** sets the sink rate magnitude at which the camera reaches full landing intensity (100–1000 fpm). Lower values make normal landings more noticeable. Sink rates below 40 fpm still produce no effect; the response remains smooth and nonlinear.
+
+**Normalize impulse peak** removes the waveform's initial peak attenuation. At full landing intensity and master/aircraft strengths of 1.0, the first peak reaches the configured vertical and pitch movement. Strength multipliers can increase it further. Duration changes settling time, not peak amplitude.
+
+The **CL60** default is **300 fpm with normalization enabled**. At −200 fpm and strengths of 1.0, Pitch 5 degrees yields about **2.6 degrees** instead of the previous 0.43 degrees. These defaults are tuning suggestions, not a physical calibration of the Hot Start aircraft. Start with modest movement values and a −100/−200 fpm preview if your previous settings were very high.
+
+Other aircraft retain **700 fpm with normalization disabled**, preserving their previous effect. Existing CL60 configs retain all earlier controls and adopt the new sensitivity defaults if those fields are absent. Both new controls save per ICAO; to recover the old CL60 response, select 700 fpm and disable normalization, then save.
 
 ## Nose gear
 
