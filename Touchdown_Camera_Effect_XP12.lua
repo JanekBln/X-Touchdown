@@ -1,5 +1,5 @@
 --[[
-X-Plane 12 Touchdown Camera Effect v1.11
+X-Plane 12 Touchdown Camera Effect v1.12
 FlyWithLua NG
 
 Features:
@@ -82,8 +82,15 @@ local effect_duration   = 0.48    -- seconds
 
 -- Touchdown processing
 local min_touchdown_fpm = 40
-local max_touchdown_fpm = 700
 local response_curve    = 1.35
+-- Legacy profiles retain 700 fpm and the original unnormalized waveform.
+-- CL60 gets a more sensitive default; both controls are saved per ICAO.
+local full_effect_fpm = 700
+local normalize_impulse = false
+local wave_frequency = math.pi * 4.2
+local wave_decay = 5.2
+local wave_peak_time = math.atan(wave_frequency / wave_decay) / wave_frequency
+local wave_peak = math.sin(wave_frequency * wave_peak_time) * math.exp(-wave_decay * wave_peak_time)
 
 -- Per-aircraft multiplier.
 -- Add/change ICAO codes here if desired.
@@ -135,6 +142,7 @@ local baseline_tuning = nil
 local profile_limits = {
     ENABLED = {0, 1, true}, MASTER = {0, 2}, VERTICAL = {0, 0.150},
     PITCH = {0, 5.00}, DURATION = {0.15, 2.00},
+    FULL_EFFECT_FPM = {100, 1000}, NORMALIZE_IMPULSE = {0, 1, true},
     SOUND_ENABLED = {0, 1, true}, SOUND_CHOICE = {1, 3, true}, SOUND_VOLUME = {0, 1},
     CAMERA_MODE = {1, 3, true}, XCAMERA_SCRIPT_ID = {1, 9999, true}
 }
@@ -256,6 +264,7 @@ load_aircraft_config()
 baseline_tuning = {
     ENABLED = 1, MASTER = master_strength, VERTICAL = max_vertical_move,
     PITCH = max_pitch_move, DURATION = effect_duration,
+    FULL_EFFECT_FPM = full_effect_fpm, NORMALIZE_IMPULSE = normalize_impulse and 1 or 0,
     SOUND_ENABLED = sound_enabled and 1 or 0, SOUND_CHOICE = sound_choice, SOUND_VOLUME = sound_volume,
     CAMERA_MODE = camera_mode, XCAMERA_SCRIPT_ID = xcamera_script_id
 }
@@ -370,11 +379,12 @@ local function calculate_touchdown_strength(vs)
         return 0
     end
 
-    sinkrate = clamp(sinkrate, min_touchdown_fpm, max_touchdown_fpm)
+    local reference_fpm = clamp(full_effect_fpm, 100, 1000)
+    sinkrate = clamp(sinkrate, min_touchdown_fpm, reference_fpm)
 
     local normalized =
         (sinkrate - min_touchdown_fpm) /
-        (max_touchdown_fpm - min_touchdown_fpm)
+        (reference_fpm - min_touchdown_fpm)
 
     normalized = normalized ^ response_curve
 
@@ -450,6 +460,7 @@ capture_active_profile = function()
     tuning_profiles[active_aircraft_code] = {
         ENABLED = enabled and 1 or 0, MASTER = master_strength, VERTICAL = max_vertical_move,
         PITCH = max_pitch_move, DURATION = effect_duration,
+        FULL_EFFECT_FPM = full_effect_fpm, NORMALIZE_IMPULSE = normalize_impulse and 1 or 0,
         SOUND_ENABLED = sound_enabled and 1 or 0, SOUND_CHOICE = sound_choice, SOUND_VOLUME = sound_volume,
         CAMERA_MODE = camera_mode, XCAMERA_SCRIPT_ID = xcamera_script_id
     }
@@ -469,6 +480,13 @@ local function apply_aircraft_tuning(code)
     max_vertical_move = value("VERTICAL")
     max_pitch_move = value("PITCH")
     effect_duration = value("DURATION")
+    -- Missing fields in existing CL60 configs use the new Challenger defaults.
+    full_effect_fpm = profile.FULL_EFFECT_FPM or (code == "CL60" and 300 or baseline_tuning.FULL_EFFECT_FPM)
+    local normalization = profile.NORMALIZE_IMPULSE
+    if normalization == nil then
+        normalization = code == "CL60" and 1 or baseline_tuning.NORMALIZE_IMPULSE
+    end
+    normalize_impulse = normalization ~= 0
     sound_enabled = value("SOUND_ENABLED") ~= 0
     sound_choice = value("SOUND_CHOICE")
     sound_volume = value("SOUND_VOLUME")
@@ -565,8 +583,11 @@ local function update_camera_effect()
 
     -- Damped suspension/body impulse:
     -- starts quickly, reverses once, then settles.
-    local damping = math.exp(-5.2 * t)
-    local wave = math.sin(t * math.pi * 4.2)
+    local damping = math.exp(-wave_decay * t)
+    local wave = math.sin(t * wave_frequency)
+    -- Opt-in normalization makes the first peak reach the configured movement
+    -- at full landing intensity. The return motion remains damped.
+    if normalize_impulse then wave = wave / wave_peak end
 
     -- First part should feel like the body/head is pushed down on impact.
     local vertical_offset =
@@ -690,8 +711,10 @@ local help_text = {
     ["Effect enabled"] = "Turn touchdown movement and sound on or off.",
     ["Master strength"] = "Scale the overall camera movement.",
     ["Vertical movement"] = "Up and down camera movement in meters.",
-    ["Pitch movement"] = "Camera tilt in degrees, scaled by impact and damping. Zero disables tilt.",
+    ["Pitch movement"] = "Camera tilt scaled by impact and strength. Zero disables tilt.",
     ["Duration"] = "Time for the camera impulse to settle, in seconds.",
+    ["Full effect at"] = "Sink rate for full movement. Lower values increase sensitivity.",
+    ["Normalize impulse peak"] = "Make the first peak reach the configured movement at full impact.",
     ["Nose gear strength"] = "Scale the nose-wheel impulse. Zero disables it.",
     ["Nose gear index (0-9)"] = "Select the aircraft's nose-wheel contact index.",
     ["Gear contacts unavailable: main effect only"] = "Separate nose-wheel contact is unavailable.",
@@ -847,6 +870,11 @@ local function build_settings_content(wnd, x, y)
     )
     if changed then effect_duration = value end
 
+    changed, value = help_ui.SliderFloat("Full effect at", full_effect_fpm, 100, 1000, "%.0f fpm")
+    if changed then full_effect_fpm = value end
+    changed, value = help_ui.Checkbox("Normalize impulse peak", normalize_impulse)
+    if changed then normalize_impulse = value end
+
     imgui.Separator()
     changed, value = help_ui.SliderFloat("Nose gear strength", nose_strength(), 0.00, 1.00, "%.2f")
     if changed then nose_strength_profiles[current_icao()] = value end
@@ -934,7 +962,7 @@ function td_camera_build_window(wnd, x, y)
         end
     end
     if window_error ~= nil then
-        help_ui.TextUnformatted("Touchdown Camera Effect v1.11 - Settings error")
+        help_ui.TextUnformatted("Touchdown Camera Effect v1.12 - Settings error")
         help_ui.TextUnformatted(window_error)
         if help_ui.Button("Retry settings", 160, 28) then window_error = nil end
     end
@@ -950,7 +978,7 @@ function td_camera_open_window()
     end
 
     settings_wnd = float_wnd_create(680, 830, 1, true)
-    float_wnd_set_title(settings_wnd, "Touchdown Camera Effect v1.11")
+    float_wnd_set_title(settings_wnd, "Touchdown Camera Effect v1.12")
     float_wnd_set_imgui_builder(settings_wnd, "td_camera_build_window")
     float_wnd_set_onclose(settings_wnd, "td_camera_window_closed")
 end
